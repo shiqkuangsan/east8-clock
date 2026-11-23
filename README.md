@@ -26,7 +26,7 @@ Copy the locally signed `outputs/East8 Clock.app` to Applications and open it on
 
 ## App icon
 
-The app icon is drawn by `scripts/make-icon.swift`, which writes `Resources/AppIcon.icns` and a 1024 px preview at `Resources/AppIcon-1024.png`. To redraw it, run the script, then build the app again.
+The app icon is drawn by `scripts/make-icon.swift`, which writes `Resources/AppIcon.icns`, a Liquid Glass icon at `Resources/AppIcon.icon`, and a 1024 px preview at `Resources/AppIcon-1024.png`. When Xcode is installed, the build compiles the Liquid Glass icon so macOS 26 and later show it without a gray frame. With only Command Line Tools, the build uses the `.icns`. To redraw the icon, run the script, then build the app again.
 
 ```sh
 swift scripts/make-icon.swift

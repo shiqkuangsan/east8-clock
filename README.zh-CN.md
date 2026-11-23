@@ -26,7 +26,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./scripts/build-app.sh
 
 ## 应用图标
 
-应用图标由 `scripts/make-icon.swift` 绘制，脚本会生成 `Resources/AppIcon.icns` 和 1024 像素的预览图 `Resources/AppIcon-1024.png`。修改图标后，运行脚本并重新构建应用。
+应用图标由 `scripts/make-icon.swift` 绘制，脚本会生成 `Resources/AppIcon.icns`、Liquid Glass 图标 `Resources/AppIcon.icon` 和 1024 像素的预览图 `Resources/AppIcon-1024.png`。安装了 Xcode 时，构建会编译 Liquid Glass 图标，让 macOS 26 及更新版本显示图标时不带灰色边框；只有 Command Line Tools 时则使用 `.icns`。修改图标后，运行脚本并重新构建应用。
 
 ```sh
 swift scripts/make-icon.swift

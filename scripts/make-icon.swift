@@ -85,9 +85,8 @@ func squirclePath(in rect: CGRect, exponent n: CGFloat = 5) -> CGPath {
     return path
 }
 
-/// Draws the icon on a 1024-unit canvas (top-left origin), at `pixels` output size.
-func renderIcon(pixels: Int, theme: Theme) -> CGImage {
-    let accent = theme.accent
+/// Bitmap context with a 1024-unit, top-left-origin coordinate space at `pixels` output size.
+func makeContext(pixels: Int) -> CGContext {
     let ctx = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: 0,
                         space: CGColorSpace(name: CGColorSpace.sRGB)!,
                         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
@@ -95,9 +94,13 @@ func renderIcon(pixels: Int, theme: Theme) -> CGImage {
     ctx.translateBy(x: 0, y: CGFloat(pixels))
     ctx.scaleBy(x: k, y: -k)
     ctx.interpolationQuality = .high
-    let detailed = pixels > 32
+    return ctx
+}
 
-    // Body on Apple's macOS icon grid: 824pt inside the 1024 canvas, with a soft drop shadow.
+let center = CGPoint(x: 512, y: 512)
+
+/// Blue squircle body on Apple's macOS icon grid: 824pt inside the 1024 canvas.
+func drawBody(_ ctx: CGContext, theme: Theme) {
     let bodyPath = squirclePath(in: CGRect(x: 100, y: 100, width: 824, height: 824))
     ctx.saveGState()
     ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 22, color: rgb(0x000000, 0.28))
@@ -111,13 +114,15 @@ func renderIcon(pixels: Int, theme: Theme) -> CGImage {
     ctx.clip()
     verticalGradient(ctx, theme.top, theme.bottom, from: 100, to: 924)
     ctx.restoreGState()
+}
 
-    let center = CGPoint(x: 512, y: 512)
+/// White face with ticks and the accent "8". `shadow` is off for Liquid Glass layers, which get system shadows.
+func drawFace(_ ctx: CGContext, theme: Theme, detailed: Bool, shadow: Bool) {
     let faceRadius: CGFloat = 318
-
-    // Raised white face.
     ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -16), blur: 36, color: rgb(0x000000, 0.30))
+    if shadow {
+        ctx.setShadow(offset: CGSize(width: 0, height: -16), blur: 36, color: rgb(0x000000, 0.30))
+    }
     fillCircle(ctx, center, faceRadius, faceTop)
     ctx.restoreGState()
     ctx.saveGState()
@@ -148,7 +153,7 @@ func renderIcon(pixels: Int, theme: Theme) -> CGImage {
         let font = NSFont.systemFont(ofSize: 132, weight: .semibold)
         let text = NSAttributedString(string: "8", attributes: [
             .font: font,
-            .foregroundColor: NSColor(cgColor: accent)!,
+            .foregroundColor: NSColor(cgColor: theme.accent)!,
         ])
         let line = CTLineCreateWithAttributedString(text)
         let bounds = CTLineGetImageBounds(line, ctx)
@@ -159,12 +164,16 @@ func renderIcon(pixels: Int, theme: Theme) -> CGImage {
         CTLineDraw(line, ctx)
         ctx.restoreGState()
     } else {
-        fillCircle(ctx, eightPosition, 40, accent)
+        fillCircle(ctx, eightPosition, 40, theme.accent)
     }
+}
 
-    // Hands set to 8:00, with a soft shadow.
+/// Hands set to 8:00.
+func drawHands(_ ctx: CGContext, theme: Theme, detailed: Bool, shadow: Bool) {
     ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -8), blur: 14, color: rgb(0x000000, 0.22))
+    if shadow {
+        ctx.setShadow(offset: CGSize(width: 0, height: -8), blur: 14, color: rgb(0x000000, 0.22))
+    }
     let thick: CGFloat = detailed ? 1 : 1.5
     strokeLine(ctx, from: clockPoint(8.0 / 12, -24, center: center), to: clockPoint(8.0 / 12, 140, center: center),
                width: 30 * thick, color: graphite)
@@ -172,8 +181,27 @@ func renderIcon(pixels: Int, theme: Theme) -> CGImage {
                width: 18 * thick, color: graphite)
     fillCircle(ctx, center, 26, graphite)
     ctx.restoreGState()
-    fillCircle(ctx, center, 11, accent)
+    fillCircle(ctx, center, 11, theme.accent)
+}
 
+/// The complete legacy icon (body, face and hands) for the .icns fallback and previews.
+func renderIcon(pixels: Int, theme: Theme) -> CGImage {
+    let ctx = makeContext(pixels: pixels)
+    let detailed = pixels > 32
+    drawBody(ctx, theme: theme)
+    drawFace(ctx, theme: theme, detailed: detailed, shadow: true)
+    drawHands(ctx, theme: theme, detailed: detailed, shadow: true)
+    return ctx.makeImage()!
+}
+
+/// One transparent 1024px Liquid Glass layer. Icon Composer canvases span the whole icon,
+/// so the artwork is scaled up from the 824pt body to fill the canvas.
+func renderLayer(theme: Theme, _ draw: (CGContext) -> Void) -> CGImage {
+    let ctx = makeContext(pixels: 1024)
+    ctx.translateBy(x: 512, y: 512)
+    ctx.scaleBy(x: 1024 / 824, y: 1024 / 824)
+    ctx.translateBy(x: -512, y: -512)
+    draw(ctx)
     return ctx.makeImage()!
 }
 
@@ -242,3 +270,57 @@ try iconutil.run()
 iconutil.waitUntilExit()
 precondition(iconutil.terminationStatus == 0, "iconutil failed")
 print(outputICNS.path)
+
+// Liquid Glass source for macOS 26 and later: the system draws the background from `fill`
+// and stacks the face and hands layers on it. scripts/build-app.sh compiles it with actool.
+func extendedSRGB(_ color: CGColor) -> String {
+    let c = color.converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil)!
+        .components!
+    return "extended-srgb:" + c.prefix(4).map { String(format: "%.5f", $0) }.joined(separator: ",")
+}
+
+let iconBundle = projectDir.appendingPathComponent("Resources/AppIcon.icon")
+let iconAssets = iconBundle.appendingPathComponent("Assets")
+try? FileManager.default.removeItem(at: iconBundle)
+try FileManager.default.createDirectory(at: iconAssets, withIntermediateDirectories: true)
+writePNG(renderLayer(theme: theme) { drawFace($0, theme: theme, detailed: true, shadow: false) },
+         to: iconAssets.appendingPathComponent("face.png"))
+writePNG(renderLayer(theme: theme) { drawHands($0, theme: theme, detailed: true, shadow: false) },
+         to: iconAssets.appendingPathComponent("hands.png"))
+
+// The system lightens the fill, so lean toward the deeper bottom color to match the .icns.
+let mid = zip(theme.top.components!, theme.bottom.components!).map { 0.3 * $0 + 0.7 * $1 }
+let fill = CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: mid)!
+let iconJSON = """
+{
+  "fill" : {
+    "automatic-gradient" : "\(extendedSRGB(fill))"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "hands.png",
+          "name" : "hands"
+        }
+      ]
+    },
+    {
+      "layers" : [
+        {
+          "image-name" : "face.png",
+          "name" : "face"
+        }
+      ]
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "macOS"
+    ]
+  }
+}
+
+"""
+try iconJSON.write(to: iconBundle.appendingPathComponent("icon.json"), atomically: true, encoding: .utf8)
+print(iconBundle.path)

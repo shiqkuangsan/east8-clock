@@ -1,0 +1,28 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.11804,0.47882,0.91490,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "hands.png",
+          "name" : "hands"
+        }
+      ]
+    },
+    {
+      "layers" : [
+        {
+          "image-name" : "face.png",
+          "name" : "face"
+        }
+      ]
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "macOS"
+    ]
+  }
+}
