@@ -1,3 +1,5 @@
+<img src="Resources/AppIcon-1024.png" width="128" alt="东八时钟图标">
+
 # 东八时钟
 
 [English](README.md)
@@ -21,6 +23,16 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./scripts/build-app.sh
 ```
 
 生成的 `outputs/East8 Clock.app` 使用本地签名。把它复制到「应用程序」，再打开一次即可使用。
+
+## 应用图标
+
+应用图标由 `scripts/make-icon.swift` 绘制，脚本会生成 `Resources/AppIcon.icns` 和 1024 像素的预览图 `Resources/AppIcon-1024.png`。修改图标后，运行脚本并重新构建应用。
+
+```sh
+swift scripts/make-icon.swift
+```
+
+图标默认为蓝色。传入 `indigo`、`purple`、`teal`、`green` 或 `graphite` 可以换成其他颜色；传入 `sheet icon-themes.png` 可以把所有颜色放在一张图里对比。
 
 ## 菜单栏设置
 

@@ -1,3 +1,5 @@
+<img src="Resources/AppIcon-1024.png" width="128" alt="East8 Clock icon">
+
 # East8 Clock
 
 [简体中文](README.zh-CN.md)
@@ -21,6 +23,16 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./scripts/build-app.sh
 ```
 
 Copy the locally signed `outputs/East8 Clock.app` to Applications and open it once.
+
+## App icon
+
+The app icon is drawn by `scripts/make-icon.swift`, which writes `Resources/AppIcon.icns` and a 1024 px preview at `Resources/AppIcon-1024.png`. To redraw it, run the script, then build the app again.
+
+```sh
+swift scripts/make-icon.swift
+```
+
+The icon is blue by default. Pass `indigo`, `purple`, `teal`, `green`, or `graphite` to use another color, or pass `sheet icon-themes.png` to compare all colors in one image.
 
 ## Menu bar setup
 
